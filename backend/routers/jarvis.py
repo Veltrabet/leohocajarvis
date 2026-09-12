@@ -1,4 +1,4 @@
-"""JARVIS core: streaming chat with structured memory, daily brief, activity, system status."""
+"""LEO core: streaming chat with structured memory, daily brief, activity, system status."""
 
 import re
 from datetime import datetime, timezone
@@ -30,7 +30,7 @@ from models.schemas import (
     MemoryCreate,
 )
 
-router = APIRouter(tags=["jarvis"], dependencies=[Depends(require_session)])
+router = APIRouter(tags=["LEO"], dependencies=[Depends(require_session)])
 
 MEMORY_MARK = "###HAFIZA###"
 
@@ -53,11 +53,14 @@ Bu bloğu sadece gerçekten yeni ve kalıcı bilgi varsa yaz; yoksa hiç yazma.
 
 
 async def _context() -> str:
-    mems = await db.memories.find().sort("created_at", -1).to_list(60)
-    tasks = await db.tasks.find({"status": {"$ne": "tamam"}}).sort("created_at", -1).to_list(60)
-    projects = await db.projects.find().sort("created_at", -1).to_list(40)
-    acts = await db.activities.find().sort("created_at", -1).to_list(15)
-    leads = await db.leads.find().sort("created_at", -1).to_list(40)
+    try:
+        mems = await db.memories.find().sort("created_at", -1).to_list(60)
+        tasks = await db.tasks.find({"status": {"$ne": "tamam"}}).sort("created_at", -1).to_list(60)
+        projects = await db.projects.find().sort("created_at", -1).to_list(40)
+        acts = await db.activities.find().sort("created_at", -1).to_list(15)
+        leads = await db.leads.find().sort("created_at", -1).to_list(40)
+    except Exception:
+        mems, tasks, projects, acts, leads = [], [], [], [], []
     lines = [f"Bugünün tarihi: {today_iso()}"]
     lines.append("KALICI HAFIZA:")
     lines += [f"- {m['key']}: {m['value']}" for m in mems] or ["- (boş)"]
@@ -116,11 +119,13 @@ async def chat_stream(body: ChatSend):
         raise HTTPException(status_code=422, detail="Boş mesaj gönderilemez.")
 
     user_msg = ChatMessage(role="user", content=body.message)
-    await db.messages.insert_one(user_msg.model_dump())
-
-    history = await db.messages.find().sort("created_at", 1).to_list(60)
+    try:
+        await db.messages.insert_one(user_msg.model_dump())
+        history = await db.messages.find().sort("created_at", 1).to_list(60)
+    except Exception:
+        history = []
     transcript = "\n".join(
-        f"{'LeoHoca' if h['role'] == 'user' else 'JARVIS'}: {h['content']}" for h in history[-20:-1]
+        f"{'LeoHoca' if h['role'] == 'user' else 'LEO'}: {h['content']}" for h in history[-20:-1]
     )
     system = BASE_PERSONA + "\nDİL KURALI: " + lang_rule(body.lang) + "\n\nSİSTEM VERİSİ:\n" + await _context()
     if transcript:
@@ -128,7 +133,7 @@ async def chat_stream(body: ChatSend):
 
     async def gen():
         try:
-            chat = build_chat(session_id=f"jarvis-{user_msg.id}", system_message=system)
+            chat = build_chat(session_id=f"LEO-{user_msg.id}", system_message=system)
             full, emitted, stopped = "", 0, False
             async for ev in chat.stream_message(UserMessage(text=body.message)):
                 if isinstance(ev, TextDelta):
@@ -152,11 +157,14 @@ async def chat_stream(body: ChatSend):
 
             answer, _, mem_block = full.partition(MEMORY_MARK)
             answer = answer.strip()
-            await db.messages.insert_one(
-                ChatMessage(role="assistant", content=answer).model_dump()
-            )
-            saved = await _store_memories(mem_block) if mem_block.strip() else 0
-            await log("sohbet", f"JARVIS yanıt üretti ({len(answer)} karakter).")
+            try:
+                await db.messages.insert_one(
+                    ChatMessage(role="assistant", content=answer).model_dump()
+                )
+                saved = await _store_memories(mem_block) if mem_block.strip() else 0
+            except Exception:
+                saved = 0
+            await log("sohbet", f"LEO yanıt üretti ({len(answer)} karakter).")
             if saved:
                 await log("hafiza", f"{saved} yeni bilgi kalıcı hafızaya kaydedildi.")
             yield "event: done\ndata: {}\n\n"
