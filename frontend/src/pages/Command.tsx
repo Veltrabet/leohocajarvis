@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, CircleDot, Mic, MicOff, Send, Sparkles, Square } from "lucide-react";
@@ -25,6 +25,8 @@ export default function Command() {
   const jarvis = useJarvis();
   const [input, setInput] = useState("");
   const [answer, setAnswer] = useState("");
+  const [voiceMode, setVoiceMode] = useState(false);
+  const voiceModeRef = useRef(false);
 
   const tasks = useQuery({ queryKey: ["tasks"], queryFn: () => apiGet<Task[]>("/tasks"), retry: false });
   const activity = useQuery({
@@ -62,15 +64,43 @@ export default function Command() {
     if (final) setAnswer(final);
   };
 
-  const mic = () => {
-    if (jarvis.voice.listening) {
-      jarvis.voice.stopListening();
-      return;
-    }
+  const startVoiceMode = () => {
+    voiceModeRef.current = true;
+    setVoiceMode(true);
     const ok = jarvis.voice.startListening((text) => {
       if (text) void run(text, true);
     });
-    if (!ok) toast.error("Bu tarayıcı sesli girişi (Web Speech API) desteklemiyor.");
+    if (!ok) {
+      voiceModeRef.current = false;
+      setVoiceMode(false);
+      toast.error("Bu tarayıcı sesli girişi desteklemiyor. Chrome veya Safari kullanın.");
+    }
+  };
+
+  const stopVoiceMode = () => {
+    voiceModeRef.current = false;
+    setVoiceMode(false);
+    jarvis.voice.stopListening();
+    jarvis.voice.stopSpeaking();
+  };
+
+  useEffect(() => {
+    if (!voiceMode || jarvis.busy || jarvis.voice.speaking || jarvis.voice.listening) return;
+    const timer = window.setTimeout(() => {
+      if (!voiceModeRef.current) return;
+      jarvis.voice.startListening((text) => {
+        if (text) void run(text, true);
+      });
+    }, 450);
+    return () => window.clearTimeout(timer);
+  }, [voiceMode, jarvis.busy, jarvis.voice.speaking, jarvis.voice.listening]);
+
+  const mic = () => {
+    if (voiceMode) {
+      stopVoiceMode();
+      return;
+    }
+    startVoiceMode();
   };
 
   const shown = jarvis.streaming || answer;
@@ -97,9 +127,34 @@ export default function Command() {
       <section className="q8-glass q8-bracket relative col-span-12 flex flex-col items-center overflow-hidden rounded-2xl p-6 lg:col-span-7">
         <JarvisOrb state={jarvis.orbState} size={260} onClick={mic} />
 
+        {!voiceMode ? (
+          <button
+            type="button"
+            onClick={startVoiceMode}
+            data-testid="voice-mode-start"
+            className="mt-5 flex items-center gap-3 rounded-full border border-[#00FFA3]/50 bg-[#00FFA3]/10 px-5 py-3 font-mono text-xs uppercase tracking-[0.2em] text-[#00FFA3] transition-[background-color,box-shadow] duration-200 hover:bg-[#00FFA3]/20 hover:shadow-[0_0_24px_rgba(0,255,163,0.24)]"
+          >
+            <Mic className="h-4 w-4" /> LEO'YU DİNLEMEYE BAŞLAT
+          </button>
+        ) : (
+          <div className="mt-5 flex items-center gap-3">
+            <span className="font-mono text-xs uppercase tracking-[0.2em] text-[#00FFA3]">
+              {jarvis.voice.listening ? "LEO DİNLİYOR" : jarvis.voice.speaking ? "LEO KONUŞUYOR" : "LEO HAZIRLANIYOR"}
+            </span>
+            <button
+              type="button"
+              onClick={stopVoiceMode}
+              data-testid="voice-mode-stop"
+              className="rounded-full border border-[#FF3366]/40 px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-[#FF8FA8]"
+            >
+              Durdur
+            </button>
+          </div>
+        )}
+
         <div className="mt-10 w-full">
           <form
-            className="flex gap-2"
+            className={voiceMode ? "hidden" : "flex gap-2"}
             onSubmit={(e) => {
               e.preventDefault();
               void run(input, false);
@@ -108,7 +163,7 @@ export default function Command() {
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Komut verin: “Bugün ne yapmam gerekiyor?”"
+              placeholder="Yazılı yedek komut: “Bugün ne yapmam gerekiyor?”"
               data-testid="command-input"
               className="h-12 flex-1 rounded-xl border border-[#00F0FF]/20 bg-[#050811]/70 px-4 text-sm text-[#E2F1FF] outline-none transition-[border-color,box-shadow] duration-200 placeholder:text-[#4b6782] focus:border-[#00F0FF]/60 focus:shadow-[0_0_20px_rgba(0,240,255,0.18)]"
             />
@@ -160,7 +215,7 @@ export default function Command() {
               <span className="whitespace-pre-wrap">{shown}</span>
             ) : (
               <span className="text-[#4b6782]">
-                JARVIS hazır. Yazarak veya mikrofona basarak konuşun. Tüm yanıtlar gerçek görev,
+                LEO hazır. Sesli modu başlatıp doğrudan konuşun. Tüm yanıtlar gerçek görev,
                 proje ve hafıza verinize dayanır.
               </span>
             )}
@@ -248,7 +303,7 @@ export default function Command() {
         </Panel>
       </div>
 
-      <Panel title="JARVIS İşlem Günlüğü" testId="panel-activity" className="col-span-12">
+          <Panel title="LEO İşlem Günlüğü" testId="panel-activity" className="col-span-12">
         {(activity.data ?? []).length === 0 ? (
           <p className="text-sm text-[#5d7a97]">Henüz kayıtlı işlem yok.</p>
         ) : (
