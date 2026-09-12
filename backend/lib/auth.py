@@ -2,19 +2,42 @@
 
 import os
 import secrets
+import hashlib
+import hmac
+import time
 from datetime import datetime, timedelta, timezone
 
 from fastapi import Cookie, HTTPException, Response
 
 from lib.db import db
 
-COOKIE = "jarvis_session"
+COOKIE = "LEO_session"
 TTL_DAYS = 30
 _memory_sessions: dict[str, datetime] = {}
 
 
 def _pin() -> str:
-    return os.environ.get("JARVIS_PIN", "1903")
+    return os.environ.get("LEO_PIN", "1903")
+
+
+def _session_secret() -> bytes:
+    return os.environ.get("LEO_SESSION_SECRET", "local-development-session-secret").encode()
+
+
+def _fallback_token(expires_at: datetime) -> str:
+    payload = f"{int(expires_at.timestamp())}.{secrets.token_urlsafe(16)}"
+    signature = hmac.new(_session_secret(), payload.encode(), hashlib.sha256).hexdigest()
+    return f"fallback.{payload}.{signature}"
+
+
+def _valid_fallback_token(token: str) -> bool:
+    try:
+        prefix, expiry, nonce, signature = token.split(".", 3)
+        payload = f"{expiry}.{nonce}"
+        expected = hmac.new(_session_secret(), payload.encode(), hashlib.sha256).hexdigest()
+        return prefix == "fallback" and hmac.compare_digest(signature, expected) and int(expiry) > int(time.time())
+    except (ValueError, TypeError):
+        return False
 
 
 async def create_session(pin: str, response: Response) -> None:
@@ -31,7 +54,7 @@ async def create_session(pin: str, response: Response) -> None:
             }
         )
     except Exception:
-        _memory_sessions[token] = expires_at
+        token = _fallback_token(expires_at)
     response.set_cookie(
         COOKIE,
         token,
@@ -39,7 +62,7 @@ async def create_session(pin: str, response: Response) -> None:
         max_age=TTL_DAYS * 86400,
         samesite="lax",
         path="/",
-        secure=False,
+        secure=bool(os.environ.get("VERCEL")),
     )
 
 
@@ -53,18 +76,20 @@ async def destroy_session(response: Response, token: str | None) -> None:
     response.delete_cookie(COOKIE, path="/")
 
 
-async def require_session(jarvis_session: str | None = Cookie(default=None)) -> str:
-    if not jarvis_session:
+async def require_session(LEO_session: str | None = Cookie(default=None)) -> str:
+    if not LEO_session:
         raise HTTPException(status_code=401, detail="Oturum gerekli.")
-    memory_expiry = _memory_sessions.get(jarvis_session)
+    if _valid_fallback_token(LEO_session):
+        return LEO_session
+    memory_expiry = _memory_sessions.get(LEO_session)
     if memory_expiry is not None:
         if memory_expiry > datetime.now(timezone.utc):
-            return jarvis_session
-        _memory_sessions.pop(jarvis_session, None)
+            return LEO_session
+        _memory_sessions.pop(LEO_session, None)
     try:
-        doc = await db.sessions.find_one({"token": jarvis_session})
+        doc = await db.sessions.find_one({"token": LEO_session})
     except Exception:
         doc = None
     if not doc:
         raise HTTPException(status_code=401, detail="Oturum geçersiz veya süresi dolmuş.")
-    return jarvis_session
+    return LEO_session

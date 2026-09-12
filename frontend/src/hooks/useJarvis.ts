@@ -35,6 +35,7 @@ export function useJarvis(options?: { autoSpeak?: boolean }) {
             ? String((e.body as { detail: unknown }).detail)
             : "JARVIS yanıt veremedi. Bağlantı veya AI servisi kullanılamıyor.";
         setError(detail);
+            if (shouldSpeak.current) voice.speak(detail);
         acc = "";
       } finally {
         setBusy(false);

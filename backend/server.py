@@ -28,14 +28,14 @@ async def lifespan(app: FastAPI):
     client.close()
 
 
-app = FastAPI(title="JARVIS — Q8Ka By Leohoca", lifespan=lifespan)
+app = FastAPI(title="LEO — Q8Ka By Leohoca", lifespan=lifespan)
 
 api_router = APIRouter(prefix="/api")
 
 
 @api_router.get("/")
 async def root():
-    return {"message": "JARVIS online", "system": "Q8Ka By Leohoca"}
+    return {"message": "LEO online", "system": "Q8Ka By Leohoca"}
 
 
 @api_router.get("/health")
