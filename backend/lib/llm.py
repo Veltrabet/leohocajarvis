@@ -75,7 +75,7 @@ class LLMUnavailable(Exception):
 # Each capability resolves its key from env, in order — first hit wins, the rest are
 # fallbacks. Drop a key in backend/.env to switch providers without touching code.
 text_provider = os.environ.get("LEO_TEXT_PROVIDER", "gemini")
-text_model = os.environ.get("LEO_TEXT_MODEL", "gemini-2.0-flash")
+text_model = os.environ.get("LEO_TEXT_MODEL", "gemini-3.6-flash")
 if text_provider == "emergent":
     # Emergent supplies an OpenAI-compatible gateway; LiteLLM has no "emergent" provider.
     text_provider = "openai"
