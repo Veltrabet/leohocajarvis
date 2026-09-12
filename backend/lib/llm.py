@@ -1,4 +1,4 @@
-"""Provider abstraction for JARVIS. Swap providers/models here only.
+"""Provider abstraction for LEO. Swap providers/models here only.
 
 No key or model name ever reaches the frontend. If a key is missing, callers get a
 clear LLMUnavailable error — never a fake answer.
@@ -8,32 +8,63 @@ import os
 from pathlib import Path
 from typing import Any
 
+import httpx
 from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).parent.parent / ".env")
 
-try:
-    from emergentintegrations.llm.chat import ImageContent, LlmChat, StreamDone, TextDelta, UserMessage
-    EMERGENT_INTEGRATION_AVAILABLE = True
-except ModuleNotFoundError:
-    EMERGENT_INTEGRATION_AVAILABLE = False
+class ImageContent:
+    def __init__(self, image_base64: str | None = None):
+        self.image_base64 = image_base64
 
-    class ImageContent:
-        def __init__(self, image_base64: str | None = None):
-            self.image_base64 = image_base64
 
-    class UserMessage:
-        def __init__(self, text: str = "", file_contents: list[ImageContent] | None = None):
-            self.text = text
-            self.file_contents = file_contents
+class UserMessage:
+    def __init__(self, text: str = "", file_contents: list[ImageContent] | None = None):
+        self.text = text
+        self.file_contents = file_contents
 
-    class TextDelta:
-        pass
 
-    class StreamDone:
-        pass
+class TextDelta:
+    def __init__(self, content: str):
+        self.content = content
 
-    LlmChat = Any
+
+class StreamDone:
+    pass
+
+
+LlmChat = Any
+
+
+class GeminiChat:
+    def __init__(self, api_key: str, system_message: str, model: str):
+        self.api_key = api_key
+        self.system_message = system_message
+        self.model = model
+
+    async def _complete(self, prompt: str) -> str:
+        url = (
+            f"https://generativelanguage.googleapis.com/v1beta/models/"
+            f"{self.model}:generateContent?key={self.api_key}"
+        )
+        payload = {
+            "system_instruction": {"parts": [{"text": self.system_message}]},
+            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+            "generationConfig": {"temperature": 0.4, "maxOutputTokens": 1200},
+        }
+        async with httpx.AsyncClient(timeout=45) as client:
+            response = await client.post(url, json=payload)
+        if response.is_error:
+            raise RuntimeError(f"Gemini HTTP {response.status_code}: {response.text[:300]}")
+        data = response.json()
+        try:
+            return data["candidates"][0]["content"]["parts"][0]["text"]
+        except (KeyError, IndexError, TypeError) as exc:
+            raise RuntimeError("Gemini boş veya geçersiz yanıt döndürdü.") from exc
+
+    async def stream_message(self, message: UserMessage):
+        yield TextDelta(await self._complete(message.text))
+        yield StreamDone()
 
 
 class LLMUnavailable(Exception):
@@ -43,8 +74,8 @@ class LLMUnavailable(Exception):
 # --- provider registry -------------------------------------------------------
 # Each capability resolves its key from env, in order — first hit wins, the rest are
 # fallbacks. Drop a key in backend/.env to switch providers without touching code.
-text_provider = os.environ.get("JARVIS_TEXT_PROVIDER", "gemini")
-text_model = os.environ.get("JARVIS_TEXT_MODEL", "gemini-3-flash-preview")
+text_provider = os.environ.get("LEO_TEXT_PROVIDER", "gemini")
+text_model = os.environ.get("LEO_TEXT_MODEL", "gemini-2.0-flash")
 if text_provider == "emergent":
     # Emergent supplies an OpenAI-compatible gateway; LiteLLM has no "emergent" provider.
     text_provider = "openai"
@@ -62,8 +93,8 @@ PROVIDERS = {
     "image": {
         # The operator's own Gemini key has no image quota (429), so image generation
         # resolves to the Emergent key first. Set GEMINI_IMAGE_API_KEY to override.
-        "provider": os.environ.get("JARVIS_IMAGE_PROVIDER", "gemini"),
-        "model": os.environ.get("JARVIS_IMAGE_MODEL", "gemini-2.5-flash-image"),
+        "provider": os.environ.get("LEO_IMAGE_PROVIDER", "gemini"),
+        "model": os.environ.get("LEO_IMAGE_MODEL", "gemini-2.5-flash-image"),
         "key_env": ("GEMINI_IMAGE_API_KEY", "EMERGENT_LLM_KEY", "GEMINI_API_KEY"),
     },
 }
@@ -141,53 +172,28 @@ def _keys_for(capability: str) -> tuple[list[str], dict]:
 
 
 def build_chat(session_id: str, system_message: str) -> LlmChat:
-    if not EMERGENT_INTEGRATION_AVAILABLE:
-        raise LLMUnavailable("LLM entegrasyonu kurulu değil.")
     keys, cfg = _keys_for("text")
-    return LlmChat(api_key=keys[0], session_id=session_id, system_message=system_message).with_model(
-        cfg["provider"], cfg["model"]
-    )
+    if cfg["provider"] == "gemini":
+        return GeminiChat(keys[0], system_message, cfg["model"])
+    raise LLMUnavailable(f"Desteklenmeyen metin sağlayıcısı: {cfg['provider']}")
 
 
 async def complete(session_id: str, system_message: str, prompt: str) -> str:
-    if not EMERGENT_INTEGRATION_AVAILABLE:
-        raise LLMUnavailable("LLM entegrasyonu kurulu değil.")
     keys, cfg = _keys_for("text")
-    last: Exception | None = None
-    for key in keys:  # first key is primary, the rest are real fallbacks
-        try:
-            chat = LlmChat(
-                api_key=key, session_id=session_id, system_message=system_message
-            ).with_model(cfg["provider"], cfg["model"])
-            return await chat.send_message(UserMessage(text=prompt))
-        except Exception as exc:  # noqa: BLE001 — try the next credential
-            last = exc
-    raise LLMUnavailable(f"Metin servisi yanıt vermedi: {last}")
+    if cfg["provider"] == "gemini":
+        last: Exception | None = None
+        for key in keys:
+            try:
+                return await GeminiChat(key, system_message, cfg["model"])._complete(prompt)
+            except Exception as exc:  # noqa: BLE001
+                last = exc
+        raise LLMUnavailable(f"Gemini yanıt vermedi: {last}")
+    raise LLMUnavailable(f"Desteklenmeyen metin sağlayıcısı: {cfg['provider']}")
 
 
 async def generate_image(prompt: str, source_image_b64: str | None = None) -> dict:
     """Generate (or edit, when a source image is given) an image. Returns base64 + mime."""
-    if not EMERGENT_INTEGRATION_AVAILABLE:
-        raise LLMUnavailable("LLM entegrasyonu kurulu değil.")
-    keys, cfg = _keys_for("image")
-    files = [ImageContent(image_base64=source_image_b64)] if source_image_b64 else None
-    last: Exception | None = None
-    for key in keys:
-        try:
-            chat = LlmChat(
-                api_key=key,
-                session_id="jarvis-image",
-                system_message="You are an expert visual designer. Always return an image.",
-            ).with_model(cfg["provider"], cfg["model"])
-            text, images = await chat.send_message_multimodal_response(
-                UserMessage(text=prompt, file_contents=files)
-            )
-            if images:
-                return {"data": images[0]["data"], "mime_type": images[0]["mime_type"], "note": text or ""}
-            last = RuntimeError("servis görsel döndürmedi")
-        except Exception as exc:  # noqa: BLE001 — try the next credential
-            last = exc
-    raise LLMUnavailable(f"Görsel üretilemedi: {last}")
+    raise LLMUnavailable("Görsel üretimi için ayrıca bir image provider yapılandırılmalı.")
 
 
 __all__ = [
