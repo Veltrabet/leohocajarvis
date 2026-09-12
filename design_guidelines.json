@@ -1,0 +1,223 @@
+{
+  "project_name": "JARVIS — Q8Ka By Leohoca",
+  "archetype": "FUTURISTIC_AI_COMMAND_CENTER",
+  "brand_identity": {
+    "mark": "Q8Ka By Leohoca",
+    "codename": "JARVIS AI OS",
+    "user_persona": "LeoHoca (Developer, Web Designer, IT Expert, Social Media Strategist)",
+    "aesthetic": "Deep cinematic obsidian/navy command terminal, glowing electric cyan rings, frosted tactical glass, holographic central AI orb with real-time responsive states, micro-grid scanning line, zero SaaS fluff.",
+    "language": "tr",
+    "theme_preference": "dark_only"
+  },
+  "entry_surfaces": {
+    "/login": "cinematic obsidian lockscreen — glowing biometric PIN keypad + Q8Ka holographic crest left, secure neural entry console right",
+    "/": "futuristic command center hero — top biometric telemetry ribbon, central multi-layered reactive JARVIS Orb with audio spectrum, live operational widgets (Bugünkü İşler, Öncelikli Sistem Görevleri, AI İşlem Akışı, Hızlı Ses/Terminal Komutları) and ambient grid matrix"
+  },
+  "colors": {
+    "surfaces": [
+      {
+        "name": "page",
+        "kind": "solid",
+        "bg": "#050811",
+        "on_bg": "#E2F1FF",
+        "on_bg_muted": "#7B96B2",
+        "roles": {
+          "link": "#00F0FF",
+          "error": "#FF3366",
+          "success": "#00FFA3",
+          "warning": "#FFB800",
+          "cyan_glow": "#00F0FF",
+          "electric_blue": "#38BDF8"
+        }
+      },
+      {
+        "name": "panel",
+        "kind": "solid",
+        "bg": "#0B132B",
+        "on_bg": "#E2F1FF",
+        "on_bg_muted": "#8EA8C3",
+        "roles": {
+          "link": "#00F0FF",
+          "error": "#FF4466",
+          "success": "#00FFA3",
+          "border_glow": "rgba(0, 240, 255, 0.25)"
+        }
+      },
+      {
+        "name": "orb_card",
+        "kind": "solid",
+        "bg": "#080E1E",
+        "on_bg": "#F0F9FF",
+        "on_bg_muted": "#94A3B8",
+        "roles": {
+          "idle_ring": "#00E5FF",
+          "listening_ring": "#00FFA3",
+          "thinking_ring": "#BD00FF",
+          "speaking_ring": "#38BDF8"
+        }
+      },
+      {
+        "name": "tactical_glass",
+        "kind": "glass",
+        "contrast_against": "#0A1124",
+        "guarantee": "backdrop-blur-xl bg-[#0B132B]/70 border border-[#00F0FF]/20 shadow-[0_0_25px_rgba(0,240,255,0.08)]",
+        "on_bg": "#F0F9FF",
+        "on_bg_muted": "#8EA8C3",
+        "roles": {
+          "link": "#00F0FF",
+          "error": "#FF3366",
+          "success": "#00FFA3"
+        }
+      },
+      {
+        "name": "status_badge_active",
+        "kind": "solid",
+        "bg": "#003840",
+        "on_bg": "#38EFE3",
+        "on_bg_muted": "#22D3EE"
+      },
+      {
+        "name": "status_badge_thinking",
+        "kind": "solid",
+        "bg": "#2B0938",
+        "on_bg": "#F38FFF",
+        "on_bg_muted": "#E879F9"
+      },
+      {
+        "name": "inverse",
+        "kind": "solid",
+        "bg": "#E2F1FF",
+        "on_bg": "#050811",
+        "on_bg_muted": "#1E293B"
+      }
+    ],
+    "accent": "#00F0FF",
+    "on_accent": "#030A14"
+  },
+  "typography": {
+    "fonts": {
+      "heading": "Space Grotesk Variable, sans-serif",
+      "body": "Geist Variable, -apple-system, BlinkMacSystemFont, sans-serif",
+      "mono": "JetBrains Mono Variable, monospace"
+    },
+    "scale_px": {
+      "display": 56,
+      "h1": 42,
+      "h2": 32,
+      "h3": 22,
+      "body": 16,
+      "caption": 14
+    },
+    "rules": {
+      "overlines": "text-xs uppercase tracking-[0.25em] font-mono font-semibold text-[#00F0FF]",
+      "headings": "tracking-tight font-heading font-bold text-[#E2F1FF]",
+      "code_badges": "font-mono text-xs tracking-wider"
+    }
+  },
+  "jarvis_orb_spec": {
+    "component_name": "JarvisOrb",
+    "location": "frontend/src/components/jarvis/JarvisOrb.tsx",
+    "states": {
+      "IDLE": {
+        "core_color": "#00F0FF",
+        "outer_glow": "rgba(0, 240, 255, 0.4)",
+        "particle_speed": "slow (6s rotate)",
+        "pulse_duration": "3s ease-in-out infinite",
+        "description": "Subtle breathing cyan core with 3 concentric rotating holographic rings and low-frequency floating nodes"
+      },
+      "LISTENING": {
+        "core_color": "#00FFA3",
+        "outer_glow": "rgba(0, 255, 163, 0.6)",
+        "particle_speed": "dynamic responsive audio wave",
+        "pulse_duration": "1s ease-in-out infinite",
+        "description": "Green-cyan energetic radar sweep with reactive audio frequency bars expanding outward"
+      },
+      "THINKING": {
+        "core_color": "#BD00FF",
+        "outer_glow": "rgba(189, 0, 255, 0.55)",
+        "particle_speed": "high-speed dual counter-rotation (1.5s)",
+        "pulse_duration": "0.8s ping-pong",
+        "description": "Deep violet-cyan vortex with swirling neural particle rays and quantum compression ripple"
+      },
+      "SPEAKING": {
+        "core_color": "#38BDF8",
+        "outer_glow": "rgba(56, 189, 248, 0.7)",
+        "particle_speed": "vocalized waveform resonance",
+        "pulse_duration": "0.4s voice sync fluctuation",
+        "description": "Kinetic electric blue sonar rings radiating outwards with center core size pulsing in sync with speech"
+      }
+    },
+    "layers": [
+      "1. Ambient SVG background circular coordinate reticle + degree tick marks",
+      "2. Counter-rotating segmented SVG dashed orbital rings (motion/react animate={{ rotate: 360 }})",
+      "3. Core radial gradient canvas/CSS glowing sphere with inner refraction highlight",
+      "4. Real-time Audio Visualizer spectrum ring (16 vertical neon bars orbiting the sphere)",
+      "5. Center state badge & micro-telemetry data readout (Hz frequency, Memory load, Latency 14ms)"
+    ]
+  },
+  "grids_and_layouts": {
+    "dashboard_grid": {
+      "desktop": "grid grid-cols-12 gap-6 p-6 max-w-[1600px] mx-auto",
+      "sections": {
+        "top_telemetry_bar": "col-span-12 flex items-center justify-between p-4 rounded-xl bg-[#0B132B]/80 border border-[#00F0FF]/20",
+        "central_orb_command": "col-span-12 lg:col-span-7 row-span-2 flex flex-col items-center justify-center p-8 rounded-2xl bg-[#080E1E]/90 border border-[#00F0FF]/30 relative overflow-hidden",
+        "daily_brief_ai": "col-span-12 lg:col-span-5 rounded-2xl p-6 bg-[#0B132B]/70 border border-slate-800",
+        "quick_actions_voice": "col-span-12 lg:col-span-5 rounded-2xl p-6 bg-[#0B132B]/70 border border-slate-800",
+        "priority_tasks": "col-span-12 lg:col-span-4 rounded-2xl p-6 bg-[#0B132B]/70 border border-slate-800",
+        "pending_operations": "col-span-12 lg:col-span-4 rounded-2xl p-6 bg-[#0B132B]/70 border border-slate-800",
+        "activity_timeline": "col-span-12 lg:col-span-4 rounded-2xl p-6 bg-[#0B132B]/70 border border-slate-800"
+      }
+    },
+    "mobile_pwa_shell": {
+      "mode": "PWA Native App Feel",
+      "header": "Sticky top glass HUD with Q8Ka branding, current active state & quick voice trigger",
+      "bottom_nav": "Fixed bottom-0 left-0 right-0 h-16 bg-[#080E1E]/90 backdrop-blur-2xl border-t border-[#00F0FF]/20 flex items-center justify-around z-50 px-2 pb-safe",
+      "nav_items": [
+        {"label": "Komuta", "path": "/", "icon": "Cpu"},
+        {"label": "Sohbet", "path": "/chat", "icon": "Bot"},
+        {"label": "Görevler", "path": "/tasks", "icon": "CheckSquare"},
+        {"label": "Stüdyo", "path": "/studio", "icon": "Sparkles"},
+        {"label": "Hafıza & Sistem", "path": "/system", "icon": "Database"}
+      ]
+    }
+  },
+  "visual_enhancers": {
+    "background_matrix": "Subtle dark slate blue cyber grid overlay with opacity 0.15 + cyan linear gradient beam scanline",
+    "glow_borders": "1px solid rgba(0, 240, 255, 0.25) with box-shadow: 0 0 15px rgba(0, 240, 255, 0.08)",
+    "sound_wave_effects": "Live CSS bar height animation responding to simulated speech/input",
+    "glassmorphism": "backdrop-blur-xl bg-[#0B132B]/60 border border-[#00F0FF]/15",
+    "corner_brackets": "Tactical cyber corner markers on critical widgets (top-left, bottom-right 4px cyan L-shapes)"
+  },
+  "motion": {
+    "engine": "motion/react (framer-motion)",
+    "rules": [
+      "Smooth entrance staggered transitions with opacity and translateY(10px)",
+      "Orb rotation using infinite linear transforms with hardware acceleration",
+      "Hover states for tactical buttons: neon glow expansion and 2px border highlight",
+      "Strict respect for prefers-reduced-motion media queries"
+    ]
+  },
+  "accessibility": {
+    "data_testids": "MANDATORY on all buttons, inputs, tabs, orb trigger, chat forms, task checkboxes, PIN keys",
+    "contrast_compliance": "WCAG AA guaranteed: primary text #E2F1FF on #050811 is 16.5:1; muted text #7B96B2 is 5.2:1",
+    "screen_readers": "Aria live regions for JARVIS voice status notifications and AI message stream"
+  },
+  "component_structure": {
+    "hud_header": "frontend/src/components/layout/HudHeader.tsx",
+    "bottom_pwa_nav": "frontend/src/components/layout/BottomPwaNav.tsx",
+    "jarvis_orb": "frontend/src/components/jarvis/JarvisOrb.tsx",
+    "voice_controller": "frontend/src/components/jarvis/VoiceController.tsx",
+    "streaming_chat": "frontend/src/components/chat/StreamingChat.tsx",
+    "task_manager": "frontend/src/components/tasks/TaskManager.tsx",
+    "image_studio": "frontend/src/components/studio/ImageStudio.tsx",
+    "system_memory": "frontend/src/components/system/SystemMemory.tsx",
+    "pin_lockscreen": "frontend/src/pages/PinLogin.tsx"
+  },
+  "instructions_to_main_agent": {
+    "branding_rule": "Prominently display the brand 'Q8Ka By Leohoca' in the HUD header and login shield. Show LeoHoca's profile context (Yazılımcı, Web Tasarımcı, IT & Sosyal Medya Uzmanı).",
+    "turkish_language": "Entire UI copy, system status labels, prompts, and preset commands must be in natural, professional, futuristic Turkish (e.g., 'SİSTEM HAZIR', 'SESLİ DİNLENİYOR', 'ANALİZ EDİLİYOR', 'YAPAY ZEKA YANITI', 'İŞLEM GEÇMİŞİ').",
+    "orb_interactivity": "Make the JARVIS Orb clickable to toggle states (Idle -> Listening -> Thinking -> Speaking) with real speech synthesis/recognition capabilities where supported, and interactive audio visualizer waves.",
+    "css_theme_entry": "In frontend/src/index.css, configure Space Grotesk for headings (@fontsource-variable/space-grotesk), Geist for body (@fontsource-variable/geist), JetBrains Mono for telemetry codes (@fontsource-variable/jetbrains-mono). Set dark mode default in frontend/index.html.",
+    "avoid_fluff": "NO generic SaaS placeholder bar charts. Replace with tactical cyber widgets: Real-time System Load, Neural Memory Slots, AI Operations Log, Priority Task Matrix, Turkish Quick Command Hub."
+  }
+}
