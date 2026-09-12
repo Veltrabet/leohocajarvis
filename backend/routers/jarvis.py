@@ -223,12 +223,15 @@ async def list_activity(limit: int = 60):
 @router.post("/brief", response_model=DailyBrief)
 async def daily_brief(lang: str = "auto"):
     day = today_iso()
-    open_tasks = await db.tasks.count_documents({"status": {"$ne": "tamam"}})
-    critical = await db.tasks.count_documents({"status": {"$ne": "tamam"}, "priority": "kritik"})
-    start = datetime.fromisoformat(day).replace(tzinfo=timezone.utc)
-    completed_today = await db.tasks.count_documents(
-        {"status": "tamam", "created_at": {"$gte": start}}
-    )
+    try:
+        open_tasks = await db.tasks.count_documents({"status": {"$ne": "tamam"}})
+        critical = await db.tasks.count_documents({"status": {"$ne": "tamam"}, "priority": "kritik"})
+        start = datetime.fromisoformat(day).replace(tzinfo=timezone.utc)
+        completed_today = await db.tasks.count_documents(
+            {"status": "tamam", "created_at": {"$gte": start}}
+        )
+    except Exception:
+        open_tasks = critical = completed_today = 0
     try:
         summary = await complete(
             session_id=f"brief-{day}",
