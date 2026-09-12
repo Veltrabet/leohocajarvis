@@ -6,6 +6,14 @@ import { speechLocale, useLang } from "@/lib/lang";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Recognition = any;
 
+function pickVoice(locale: string): SpeechSynthesisVoice | undefined {
+  const voices = window.speechSynthesis?.getVoices() ?? [];
+  const language = locale.toLowerCase();
+  return voices.find((voice) => voice.lang.toLowerCase() === language) ??
+    voices.find((voice) => voice.lang.toLowerCase().startsWith(language.slice(0, 2))) ??
+    voices.find((voice) => voice.default);
+}
+
 function getRecognitionCtor(): any | null {
   const w = window as any;
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
@@ -24,6 +32,14 @@ export function useVoice() {
   const ttsSupported = typeof window !== "undefined" && "speechSynthesis" in window;
 
   useEffect(() => {
+    if (!ttsSupported) return;
+    const loadVoices = () => window.speechSynthesis.getVoices();
+    loadVoices();
+    window.speechSynthesis.addEventListener("voiceschanged", loadVoices);
+    return () => window.speechSynthesis.removeEventListener("voiceschanged", loadVoices);
+  }, [ttsSupported]);
+
+  useEffect(() => {
     return () => {
       try {
         recRef.current?.stop();
@@ -39,6 +55,15 @@ export function useVoice() {
     (onFinal: (text: string) => void) => {
     const Ctor = getRecognitionCtor();
     if (!Ctor) return false;
+    if (ttsSupported) {
+      // Mobile Safari/Chrome often require speechSynthesis to be touched during
+      // the microphone tap before allowing speech after an async response.
+      const prime = new SpeechSynthesisUtterance(" ");
+      prime.volume = 0;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(prime);
+      window.speechSynthesis.cancel();
+    }
     const rec: Recognition = new Ctor();
     rec.lang = locale;
     rec.interimResults = true;
@@ -57,7 +82,7 @@ export function useVoice() {
       setListening(true);
       return true;
     },
-    [locale],
+    [locale, ttsSupported],
   );
 
   const stopListening = useCallback(() => {
@@ -81,9 +106,23 @@ export function useVoice() {
       utterance.lang = locale;
       utterance.rate = 1.02;
       utterance.pitch = 0.95;
+      utterance.voice = pickVoice(locale) ?? null;
       utterance.onstart = () => setSpeaking(true);
       utterance.onend = () => setSpeaking(false);
-      utterance.onerror = () => setSpeaking(false);
+      utterance.onerror = () => {
+        setSpeaking(false);
+        // Some mobile engines reject the first utterance while voices load.
+        window.setTimeout(() => {
+          const retry = new SpeechSynthesisUtterance(clean);
+          retry.lang = locale;
+          retry.voice = pickVoice(locale) ?? null;
+          retry.rate = 1.02;
+          retry.onstart = () => setSpeaking(true);
+          retry.onend = () => setSpeaking(false);
+          retry.onerror = () => setSpeaking(false);
+          window.speechSynthesis.speak(retry);
+        }, 180);
+      };
       window.speechSynthesis.speak(utterance);
       return true;
     },
